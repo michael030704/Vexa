@@ -1,4 +1,15 @@
 require('dotenv').config();
+
+// Safety checks
+if (!process.env.MONGODB_URI) {
+  console.error('❌ Missing MONGODB_URI in .env');
+  process.exit(1);
+}
+if (!process.env.SESSION_SECRET) {
+  console.error('❌ Missing SESSION_SECRET in .env');
+  process.exit(1);
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
@@ -9,11 +20,10 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 
-// DB
-mongoose.connect(process.env.MONGO_URI).catch(err => {
-  console.error('❌ DB Error:', err.message);
-  process.exit(1);
-});
+// Connect to MongoDB Atlas
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ Connected to MongoDB Atlas'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
 // Middleware
 app.use(express.json());
@@ -24,25 +34,23 @@ app.set('view engine', 'ejs');
 app.use(expressLayouts);
 app.set('layout', 'layout/main');
 
-// Session
+// Session (FIXED: uses MONGODB_URI)
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI })
+  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }), // ✅ CORRECT
+  cookie: { maxAge: 1000 * 60 * 60 * 24 } // 24 hours
 }));
 
-// ✅ CORRECT: SINGLE USER MIDDLEWARE (with address) — must be AFTER session
+// User middleware
 app.use(async (req, res, next) => {
   if (req.session.token) {
     try {
       const decoded = jwt.verify(req.session.token, process.env.JWT_SECRET);
       const User = require('./models/User');
-      // ✅ Include 'address' in select
       const user = await User.findById(decoded.userId).select('name address');
-      if (user) {
-        res.locals.user = user;
-      }
+      if (user) res.locals.user = user;
     } catch (err) {
       console.error('Auth middleware error:', err);
     }
@@ -82,28 +90,22 @@ app.post('/profile', async (req, res) => {
   }
 });
 
-// Home with category filter
+// Home
 app.get('/', async (req, res) => {
   const { category } = req.query;
   const Product = require('./models/Product');
-  let products;
-  if (category) {
-    products = await Product.find({ category });
-  } else {
-    products = await Product.find();
-  }
+  const products = category
+    ? await Product.find({ category })
+    : await Product.find();
   res.render('home', { products, category: category || null });
 });
 
 // Reset Password
 app.get('/reset-password/:token', (req, res) => {
-  res.render('reset-password', { 
-    token: req.params.token,
-    layout: false
-  });
+  res.render('reset-password', { token: req.params.token, layout: false });
 });
 
-// Seed Data
+// Seed
 app.get('/seed', async (req, res) => {
   const Product = require('./models/Product');
   const User = require('./models/User');
@@ -111,15 +113,12 @@ app.get('/seed', async (req, res) => {
   await Product.deleteMany({});
   await User.deleteMany({});
 
-  // Users
   await User.create([
     { name: 'Alex Rivera', email: 'alex@example.com', password: 'vexa123' },
     { name: 'Taylor Kim', email: 'taylor@example.com', password: 'vexa123' }
   ]);
 
-  // 30+ Products across 5 categories
   const products = [
-    // 📱 Electronics (8)
     { name: 'Quantum Laptop Pro', description: '32GB RAM, 2TB SSD, 4K Display', price: 2199, stock: 5, category: 'Electronics' },
     { name: 'Nexus Smartphone X', description: '200MP Camera, 5000mAh Battery', price: 1099, stock: 12, category: 'Electronics' },
     { name: 'Ultra HD Smart TV', description: '65" 4K OLED, Smart Assistant', price: 1499, stock: 7, category: 'Electronics' },
@@ -128,8 +127,6 @@ app.get('/seed', async (req, res) => {
     { name: 'Digital Camera DSLR', description: '45MP Sensor, 4K Video', price: 1299, stock: 8, category: 'Electronics' },
     { name: 'Smart Watch Series 8', description: 'ECG, GPS, 7-Day Battery', price: 399, stock: 15, category: 'Electronics' },
     { name: 'Wireless Keyboard & Mouse', description: 'Ergonomic, Silent Keys', price: 89, stock: 30, category: 'Electronics' },
-
-    // 🎮 Gadgets (7)
     { name: 'Smart Fitness Tracker', description: 'Heart Rate, Sleep, GPS Tracking', price: 129, stock: 25, category: 'Gadgets' },
     { name: 'Portable Power Bank 20K', description: '20,000mAh, Fast Charge, Dual USB', price: 49, stock: 50, category: 'Gadgets' },
     { name: 'Wireless Charging Pad', description: '15W Fast Wireless Charging', price: 35, stock: 40, category: 'Gadgets' },
@@ -137,24 +134,17 @@ app.get('/seed', async (req, res) => {
     { name: 'Smart LED Light Strip', description: 'RGB, App-Controlled, Music Sync', price: 59, stock: 20, category: 'Gadgets' },
     { name: 'VR Headset Lite', description: 'Immersive 3D Experience', price: 249, stock: 12, category: 'Gadgets' },
     { name: 'Drone with Camera', description: '4K Video, 30min Flight Time', price: 349, stock: 8, category: 'Gadgets' },
-
-    // 🍫 Foods (6)
     { name: 'Organic Superfood Mix', description: 'Chia, Quinoa, Goji Berries - 500g', price: 24, stock: 30, category: 'Foods' },
     { name: 'Gourmet Coffee Beans', description: 'Single-Origin Ethiopian, 1kg', price: 32, stock: 25, category: 'Foods' },
     { name: 'Dark Chocolate Assortment', description: '70% Cocoa, 12-Piece Box', price: 18, stock: 40, category: 'Foods' },
     { name: 'Organic Honey Jar', description: 'Raw, Unfiltered, 500g', price: 15, stock: 50, category: 'Foods' },
     { name: 'Vegan Protein Powder', description: 'Plant-Based, 1kg', price: 29, stock: 35, category: 'Foods' },
     { name: 'Artisan Pasta Set', description: 'Handmade, 6 Varieties', price: 22, stock: 20, category: 'Foods' },
-
-    // 👕 Fashion (5)
     { name: 'Urban Tech Jacket', description: 'Water-Resistant, Hidden Pockets', price: 149, stock: 18, category: 'Fashion' },
     { name: 'Minimalist Sneakers', description: 'Eco-Friendly Materials, Cloud Comfort', price: 89, stock: 25, category: 'Fashion' },
     { name: 'Luxury Watch', description: 'Stainless Steel, Sapphire Glass', price: 299, stock: 10, category: 'Fashion' },
     { name: 'Silk Scarf Collection', description: 'Hand-Printed, 3 Designs', price: 45, stock: 30, category: 'Fashion' },
     { name: 'Leather Crossbody Bag', description: 'Genuine Leather, Adjustable Strap', price: 119, stock: 15, category: 'Fashion' },
-
-    // 🏠 Home (7)
-    { name: 'Smart LED Light Strip', description: 'RGB, App-Controlled, Music Sync', price: 59, stock: 25, category: 'Home' },
     { name: 'Bamboo Cutlery Set', description: 'Eco-Friendly, Travel-Ready', price: 22, stock: 40, category: 'Home' },
     { name: 'Aromatherapy Diffuser', description: 'Wood Grain, 7 LED Colors', price: 39, stock: 30, category: 'Home' },
     { name: 'Memory Foam Pillow', description: 'Cervical Support, Hypoallergenic', price: 49, stock: 35, category: 'Home' },
@@ -164,36 +154,24 @@ app.get('/seed', async (req, res) => {
   ];
 
   await Product.insertMany(products);
-  res.send('✅ Vexa seed data loaded! 33 products across 5 categories.');
+  res.send('✅ Vexa seed data loaded! 32 products across 5 categories.');
 });
 
-// Orders with status filter
+// Orders
 app.get('/orders', async (req, res) => {
-  if (!req.session.token) {
-    return res.redirect('/auth/login');
-  }
-
+  if (!req.session.token) return res.redirect('/auth/login');
   try {
     const decoded = jwt.verify(req.session.token, process.env.JWT_SECRET);
-    const userId = decoded.userId;
     const { status } = req.query;
-
     const Order = require('./models/Order');
-    const validStatuses = ['Processing', 'Packing', 'Delivering', 'Delivered', 'Cancelled'];
-    
-    const filter = { user: userId };
-    if (status && validStatuses.includes(status)) {
+    const filter = { user: decoded.userId };
+    if (status && ['Processing', 'Packing', 'Delivering', 'Delivered', 'Cancelled'].includes(status)) {
       filter.status = status;
     }
-
-    const orders = await Order.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const selectedStatus = status && validStatuses.includes(status) ? status : 'All';
-    res.render('orders', { orders, selectedStatus });
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).lean();
+    res.render('orders', { orders, selectedStatus: status || 'All' });
   } catch (err) {
-    console.error('Failed to load orders:', err);
+    console.error('Orders error:', err);
     res.redirect('/?error=1');
   }
 });
