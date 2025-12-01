@@ -402,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       document.getElementById('quantityModal').style.display = 'none';
       const toast = document.getElementById('cartToast');
-      toast.textContent = '❌ Failed to add to cart.';
+      toast.textContent = '❌ Failed to add to cart, Please Login or Sign up.';
       toast.className = 'toast error';
       toast.classList.add('show');
       setTimeout(() => toast.classList.remove('show'), 2500);
