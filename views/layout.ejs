@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>E-Commerce App</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
+    nav { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <% if (locals.token) { %>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/cart">Cart</a>
+      <a href="/orders">Orders</a>
+      <a href="/auth/logout" style="color: #d9534f;">Logout</a>
+    <% } else { %>
+      <a href="/login">Login</a>
+      <a href="/register">Register</a>
+    <% } %>
+  </nav>
+
+  <%- body %>
+</body>
+<script>
+  // Toggle dropdown
+  const userBtn = document.querySelector('.user-name-btn');
+  const dropdown = document.querySelector('.dropdown');
+  if (userBtn && dropdown) {
+    userBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+    });
+    document.addEventListener('click', () => {
+      dropdown.classList.add('hidden');
+    });
+  }
+</script>
+</html>

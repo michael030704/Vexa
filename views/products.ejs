@@ -1,0 +1,70 @@
+<!-- views/products.ejs -->
+<% products.forEach(product => { %>
+  <div class="product-card">
+    <div class="product-image">🛍️</div>
+    <div class="product-info">
+      <h3><%= product.name %></h3>
+      <p class="description"><%= product.description %></p>
+      <p class="price">$<%= product.price.toFixed(2) %></p>
+      <form id="addForm_<%= product._id %>" action="/products/add/<%= product._id %>" method="POST">
+        <button type="button" onclick="addToCart('<%= product._id %>')" class="btn btn-sm">Add to Cart</button>
+      </form>
+    </div>
+  </div>
+<% }) %>
+
+<script>
+  async function addToCart(productId) {
+    const form = document.getElementById(`addForm_${productId}`);
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(new FormData(form))
+      });
+      const data = await response.json();
+      if (data.success) {
+        showNotification(data.message);
+      } else {
+        showNotification(data.error, 'error');
+      }
+    } catch (err) {
+      showNotification('Network error. Please try again.', 'error');
+    }
+  }
+
+  function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  }
+</script>
+
+<style>
+  .notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem;
+    border-radius: 8px;
+    color: white;
+    z-index: 1000;
+    animation: fadeInOut 3s ease;
+  }
+  .notification.success {
+    background: #10b981;
+  }
+  .notification.error {
+    background: #ef4444;
+  }
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-10px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+  }
+</style>

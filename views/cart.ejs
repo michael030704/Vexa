@@ -1,0 +1,585 @@
+<% title = 'Your Cart – Vexa' %>
+
+<%
+  // Safely convert cart to plain JS objects (fixes ObjectId error)
+  const plainCart = (Array.isArray(cart) ? cart : []).map(item => {
+    return {
+      product: item.product ? {
+        _id: (item.product._id && item.product._id.toString) 
+          ? item.product._id.toString() 
+          : String(item.product._id || ''),
+        name: item.product.name || 'Unknown Product',
+        price: item.product.price || 0,
+        category: item.product.category || 'General'
+      } : null,
+      quantity: item.quantity || 1
+    };
+  });
+%>
+
+<div class="cart-container">
+  <div class="cart-header">
+    <a href="/" class="btn-back">← Back to Shop</a>
+    <h1>Your Shopping Cart</h1>
+  </div>
+  
+  <% if (plainCart.length > 0) { %>
+    <div class="cart-main">
+      <div class="cart-items-section">
+        <% plainCart.forEach(function(item, index) { %>
+          <%
+            const productId = item.product?._id || '';
+            const productName = item.product?.name || 'Unknown Product';
+            const price = item.product?.price || 0;
+            const qty = item.quantity;
+            const category = item.product?.category || 'General';
+          %>
+          <div class="cart-item" 
+               data-product-id="<%- productId %>" 
+               data-index="<%= index %>" 
+               data-price="<%= price %>">
+            <div class="item-left">
+              <input type="checkbox" name="selected" value="<%= index %>" checked />
+              <div class="item-info">
+                <div class="item-category"><%= category %></div>
+                <h3><%= productName %></h3>
+                <div class="quantity-controls">
+                  <button type="button" class="qty-btn qty-decrease">−</button>
+                  <span class="qty-display"><%= qty %></span>
+                  <button type="button" class="qty-btn qty-increase">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="item-right">
+              <span class="item-price">$<%= (price * qty).toFixed(2) %></span>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <div class="order-summary-section">
+        <div class="summary-card">
+          <h2>Order Summary</h2>
+          <div id="summary-items">
+            <ul id="summary-list"></ul>
+          </div>
+          <div class="summary-row shipping">
+            <span>Shipping Fee</span>
+            <span>$5.00</span>
+          </div>
+          <div class="summary-total">
+            <strong>Total</strong>
+            <strong id="summary-total">$0.00</strong>
+          </div>
+          <button type="button" id="confirmOrderBtn" class="btn btn-primary">Confirm Order</button>
+        </div>
+      </div>
+    </div>
+  <% } else { %>
+    <div class="empty-cart">
+      <div class="empty-icon">🛒</div>
+      <h2>Your cart is empty</h2>
+      <p>Looks like you haven’t added anything yet.</p>
+      <a href="/" class="btn">Continue Shopping</a>
+    </div>
+  <% } %>
+</div>
+
+<!-- ORDER CONFIRMATION MODAL -->
+<div id="orderModal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:500px; padding:2.5rem;">
+    <h2>Confirm Your Order</h2>
+    <div id="modalSummary"></div>
+    
+    <label>Shipping Address</label>
+    <textarea name="shippingAddress" id="modalAddress" required 
+      placeholder="Enter your shipping address"><%= (typeof user !== 'undefined' && user.address) ? user.address : '' %></textarea>
+    
+    <label>Payment Method</label>
+    <select name="paymentMethod" id="modalPayment" required>
+      <option value="cod">Cash on Delivery</option>
+      <option value="gcash">GCash</option>
+      <option value="maya">Maya</option>
+      <option value="bank">Bank Transfer</option>
+    </select>
+    
+    <div class="modal-total">
+      <strong>Total: $<span id="modalTotal">0.00</span></strong>
+    </div>
+    
+    <div class="modal-actions">
+      <button type="button" id="closeModalBtn" class="btn-secondary">Cancel</button>
+      <button type="button" id="submitOrderBtn" class="btn">Place Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="orderToast" class="toast"></div>
+
+<style>
+  .cart-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem 3rem;
+  }
+  .cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2rem 0;
+  }
+  .btn-back {
+    background: #f1f5f9;
+    color: #4b5563;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+  .cart-header h1 {
+    color: #1e293b;
+    font-size: 2rem;
+  }
+  .cart-main {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+  }
+  .cart-items-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+  .item-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex: 1;
+  }
+  .item-left input {
+    width: 20px;
+    height: 20px;
+  }
+  .item-category {
+    background: #f0fdf4;
+    color: #059669;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .item-info h3 {
+    font-size: 1.25rem;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+  }
+  .quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .qty-btn {
+    width: 36px;
+    height: 36px;
+    border: 2px solid #e2e8f0;
+    background: white;
+    border-radius: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #8b5cf6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+  }
+  .qty-display {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 1rem;
+  }
+  .item-right .item-price {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #8b5cf6;
+  }
+
+  .order-summary-section {
+    position: sticky;
+    top: 90px;
+  }
+  .summary-card {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  }
+  .summary-card h2 {
+    margin-bottom: 1.5rem;
+    color: #1e293b;
+    font-size: 1.5rem;
+  }
+  #summary-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+  #summary-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    font-weight: 500;
+  }
+  .shipping {
+    color: #64748b;
+  }
+  .summary-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #8b5cf6;
+    border-top: 2px solid #f1f5f9;
+    margin-top: 0.5rem;
+  }
+  .btn-primary {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    margin-top: 1.5rem;
+  }
+
+  .empty-cart {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 20px;
+    margin-top: 2rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  }
+  .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    color: #cbd5e1;
+  }
+  .empty-cart h2 {
+    color: #1e293b;
+    margin-bottom: 0.75rem;
+  }
+  .empty-cart p {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Modal overrides */
+  .modal-content {
+    border-radius: 20px !important;
+    padding: 2.5rem !important;
+  }
+  .modal-content h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #1e293b;
+  }
+  .modal-content label {
+    display: block;
+    margin: 1rem 0 0.5rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+  .modal-content textarea,
+  .modal-content select {
+    width: 100%;
+    padding: 0.875rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  .modal-total {
+    text-align: right;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #8b5cf6;
+    margin: 1.5rem 0;
+    padding-top: 1rem;
+    border-top: 2px solid #f1f5f9;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .btn-secondary {
+    flex: 1;
+    background: #f1f5f9;
+    color: #4b5563;
+    border: none;
+    padding: 0.875rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn {
+    flex: 1;
+    background: #8b5cf6;
+    color: white;
+    border: none;
+    padding: 0.875rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #4ade80;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    z-index: 3000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .toast.show {
+    opacity: 1;
+  }
+  .toast.error {
+    background: #f87171;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .cart-main {
+      grid-template-columns: 1fr;
+    }
+    .order-summary-section {
+      position: static;
+    }
+  }
+</style>
+
+<script>
+  // ✅ SAFE: Now uses plainCart (no ObjectId errors)
+  const safeCart = <%- JSON.stringify(plainCart) %>;
+  let cartData = [...safeCart];
+
+  function updateOrderSummary() {
+    const checkboxes = document.querySelectorAll('input[name="selected"]:checked');
+    const list = document.getElementById('summary-list');
+    const totalEl = document.getElementById('summary-total');
+    
+    list.innerHTML = '';  
+    let total = 0;
+
+    checkboxes.forEach(cb => {
+      const index = parseInt(cb.value, 10);
+      const item = cartData[index];
+      if (item && item.product) {
+        const itemTotal = item.product.price * item.quantity;
+        total += itemTotal;
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${item.product.name} × ${item.quantity}</span> <span>$${itemTotal.toFixed(2)}</span>`;
+        list.appendChild(li);
+      }
+    });
+
+    const finalTotal = total + 5.00;
+    totalEl.textContent = `$${finalTotal.toFixed(2)}`;
+  }
+
+  async function updateQuantityBackend(productId, quantity) {
+    try {
+      const res = await fetch(`/cart/update/${productId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity })
+      });
+      if (!res.ok) {
+        showToast('Failed to update quantity.', true);
+      }
+    } catch (err) {
+      showToast('Network error.', true);
+    }
+  }
+
+  function showToast(message, isError = false) {
+    const toast = document.getElementById('orderToast');
+    toast.textContent = message;
+    toast.className = `toast${isError ? ' error' : ''}`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  document.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('qty-decrease') || e.target.classList.contains('qty-increase')) {
+      const item = e.target.closest('.cart-item');
+      const qtyDisplay = item.querySelector('.qty-display');
+      let qty = parseInt(qtyDisplay.textContent);
+
+      if (e.target.classList.contains('qty-decrease')) {
+        qty = Math.max(1, qty - 1);
+      } else {
+        qty = Math.min(100, qty + 1);
+      }
+
+      qtyDisplay.textContent = qty;
+      const index = parseInt(item.dataset.index, 10);
+      cartData[index].quantity = qty;
+
+      const newTotal = cartData[index].product.price * qty;
+      item.querySelector('.item-price').textContent = `$${newTotal.toFixed(2)}`;
+      updateOrderSummary();
+      await updateQuantityBackend(item.dataset.productId, qty);
+    }
+
+    if (e.target.id === 'confirmOrderBtn') {
+      const checkboxes = document.querySelectorAll('input[name="selected"]:checked');
+      if (checkboxes.length === 0) {
+        showToast('Please select at least one item.', true);
+        return;
+      }
+
+      const ul = document.getElementById('modalSummary');
+      ul.innerHTML = '<h3 style="margin:0 0 1rem;">Order Summary:</h3><ul style="list-style:none; padding:0;"></ul>';
+      const list = ul.querySelector('ul');
+      let total = 0;
+
+      checkboxes.forEach(cb => {
+        const index = parseInt(cb.value, 10);
+        const item = cartData[index];
+        if (item && item.product) {
+          const itemTotal = item.product.price * item.quantity;
+          total += itemTotal;
+          const li = document.createElement('li');
+          li.style.cssText = 'display:flex; justify-content:space-between; padding:0.5rem 0;';
+          li.textContent = `${item.product.name} × ${item.quantity} — $${itemTotal.toFixed(2)}`;
+          list.appendChild(li);
+        }
+      });
+
+      total += 5.00;
+      document.getElementById('modalTotal').textContent = total.toFixed(2);
+      document.getElementById('orderModal').style.display = 'flex';
+    }
+
+    if (e.target.id === 'closeModalBtn') {
+      document.getElementById('orderModal').style.display = 'none';
+    }
+
+    if (e.target.id === 'submitOrderBtn') {
+      const shippingAddress = document.getElementById('modalAddress').value.trim();
+      const paymentMethod = document.getElementById('modalPayment').value;
+      const checkboxes = document.querySelectorAll('input[name="selected"]:checked');
+      
+      if (!shippingAddress) {
+        showToast('Please enter shipping address.', true);
+        return;
+      }
+      if (checkboxes.length === 0) {
+        showToast('No items selected.', true);
+        return;
+      }
+
+      const items = [];
+      checkboxes.forEach(cb => {
+        const index = parseInt(cb.value, 10);
+        const item = cartData[index];
+        if (item && item.product) {
+          items.push({
+            _id: item.product._id,
+            name: item.product.name,
+            price: item.product.price,
+            quantity: item.quantity
+          });
+        }
+      });
+
+      const total = parseFloat(document.getElementById('modalTotal').textContent);
+
+      try {
+        const res = await fetch('/orders/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shippingAddress, paymentMethod, items, total })
+        });
+
+        const data = await res.json();
+        document.getElementById('orderModal').style.display = 'none';
+
+        if (data.success) {
+          const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.value, 10));
+          await fetch('/cart/remove-ordered', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemIndexes: selectedIndices })
+          });
+
+          selectedIndices.sort((a, b) => b - a).forEach(index => {
+            const el = document.querySelector(`.cart-item[data-index="${index}"]`);
+            if (el) el.remove();
+          });
+
+          showToast('✅ Order placed successfully!');
+          
+          const remaining = document.querySelectorAll('.cart-item').length;
+          if (remaining === 0) {
+            setTimeout(() => window.location.href = '/orders', 1500);
+          } else {
+            cartData = cartData.filter((_, i) => !selectedIndices.includes(i));
+            updateOrderSummary();
+          }
+        } else {
+          showToast('❌ ' + (data.message || 'Failed to place order.'), true);
+        }
+      } catch (err) {
+        console.error('Order error:', err);
+        showToast('⚠️ Network error. Please try again.', true);
+        document.getElementById('orderModal').style.display = 'none';
+      }
+    }
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target.name === 'selected') {
+      updateOrderSummary();
+    }
+  });
+
+  document.getElementById('orderModal').addEventListener('click', (e) => {
+    if (e.target.id === 'orderModal') {
+      e.target.style.display = 'none';
+    }
+  });
+
+  updateOrderSummary();
+</script>

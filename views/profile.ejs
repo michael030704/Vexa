@@ -1,0 +1,176 @@
+<% title = 'My Profile – Claison Express' %>
+
+<div class="profile-container">
+  <h1>My Profile</h1>
+
+  <% if (locals.success) { %>
+    <div class="alert alert-success">✅ Profile updated successfully!</div>
+  <% } %>
+
+  <% if (locals.error) { %>
+    <div class="alert alert-error">❌ Failed to update profile. Please try again.</div>
+  <% } %>
+
+  <form method="POST" action="/profile" class="profile-form">
+    <!-- Personal Information -->
+    <div class="form-section">
+      <h2>Personal Information</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" name="name" value="<%= user.name || '' %>" required />
+        </div>
+      </div>
+    </div>
+
+    <!-- Shipping Address -->
+    <div class="form-section">
+      <h2>Shipping Address</h2>
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label for="address">Full Address</label>
+          <textarea id="address" name="address" rows="3" placeholder="e.g., 123 Bangcogon St, Oslob, Cebu"><%= user.address || '' %></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact & Birthdate -->
+    <div class="form-section">
+      <h2>Contact & Details</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="birthdate">Birthdate</label>
+          <input type="date" id="birthdate" name="birthdate" 
+            value="<%= user.birthdate ? user.birthdate.toISOString().split('T')[0] : '' %>" />
+        </div>
+        <div class="form-group">
+          <label for="contactNumber">Contact Number</label>
+          <input type="text" id="contactNumber" name="contactNumber" 
+            value="<%= user.contactNumber || '' %>" 
+            placeholder="+63 912 345 6789" />
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+  </form>
+</div>
+
+<style>
+  .profile-container {
+    max-width: 700px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .profile-container h1 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #111827;
+    font-size: 2rem;
+  }
+
+  .alert {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+  }
+
+  .alert-success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .alert-error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+
+  .form-section {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-section h2 {
+    margin-bottom: 1rem;
+    color: #4f46e5;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .form-group {
+    flex: 1;
+    min-width: 250px;
+  }
+
+  .form-group.full-width {
+    flex: 100%;
+    min-width: 100%;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #111827;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: #4f46e5;
+    color: white;
+    padding: 0.85rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #4338ca;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .form-row {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .form-group {
+      min-width: 100%;
+    }
+  }
+</style>

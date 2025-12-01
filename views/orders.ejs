@@ -1,0 +1,210 @@
+<% title = 'Order Tracker – Vexa' %>
+
+<div class="orders-container">
+  <h1>My Orders</h1>
+
+  <!-- Status Filter Tabs -->
+  <div class="order-filters">
+    <a href="/orders" class="filter-btn <%= locals.selectedStatus === 'All' ? 'active' : '' %>">All Orders</a>
+    <a href="/orders?status=Processing" class="filter-btn <%= locals.selectedStatus === 'Processing' ? 'active' : '' %>">Processing</a>
+    <a href="/orders?status=Packing" class="filter-btn <%= locals.selectedStatus === 'Packing' ? 'active' : '' %>">Packing</a>
+    <a href="/orders?status=Delivering" class="filter-btn <%= locals.selectedStatus === 'Delivering' ? 'active' : '' %>">Delivering</a>
+    <a href="/orders?status=Delivered" class="filter-btn <%= locals.selectedStatus === 'Delivered' ? 'active' : '' %>">Delivered</a>
+    <a href="/orders?status=Cancelled" class="filter-btn <%= locals.selectedStatus === 'Cancelled' ? 'active' : '' %>">Cancelled</a>
+  </div>
+
+  <% if (locals.orders && orders.length > 0) { %>
+    <div class="orders-list">
+      <% orders.forEach(order => { %>
+        <div class="order-card">
+          <div class="order-header">
+            <h2>Order #<%= order._id.toString().substr(-6).toUpperCase() %></h2>
+            <span class="order-status <%= order.status.toLowerCase() %>">
+              <%= order.status %>
+            </span>
+          </div>
+          <p class="order-date">
+            Placed on: <%= new Date(order.createdAt).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            }) %>
+          </p>
+          
+          <div class="order-items">
+            <h3>Items (<%= order.products && order.products.length ? order.products.length : 0 %>)</h3>
+            <% if (order.products && order.products.length > 0) { %>
+              <ul>
+                <% order.products.forEach(item => { %>
+                  <li>
+                    <span><%= item.product.name %></span>
+                    <span>× <%= item.quantity %></span>
+                    <span>$<%= (item.price * item.quantity).toFixed(2) %></span>
+                  </li>
+                <% }) %>
+              </ul>
+            <% } else { %>
+              <p>No items found.</p>
+            <% } %>
+          </div>
+          
+          <div class="order-total">
+            <strong>Total: $<%= (order.total || 0).toFixed(2) %></strong>
+          </div>
+          
+          <div class="order-actions">
+            <% if (['Processing', 'Packing'].includes(order.status)) { %>
+              <form method="POST" action="/orders/cancel/<%= order._id %>" style="display:inline;">
+                <button type="submit" class="btn btn-danger">Cancel Order</button>
+              </form>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <div class="no-orders">
+      <p>No orders found.</p>
+      <a href="/" class="btn">Shop Now</a>
+    </div>
+  <% } %>
+</div>
+
+<style>
+  .orders-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    font-family: 'Inter', sans-serif;
+  }
+  .orders-container h1 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #1e293b;
+  }
+
+  /* Status Tabs */
+  .order-filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    justify-content: center;
+  }
+  .filter-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4b5563;
+    background: #f3f4f6;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover {
+    background: #e5e7eb;
+  }
+  .filter-btn.active {
+    background: #8b5cf6;
+    color: white;
+  }
+
+  /* Orders List */
+  .orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .order-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 1.5rem;
+  }
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .order-header h2 {
+    font-size: 1.4rem;
+    color: #1e293b;
+  }
+  .order-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .order-status.processing { background: #dbeafe; color: #1d4ed8; }
+  .order-status.packing { background: #ffedd5; color: #c2410c; }
+  .order-status.delivering { background: #dbeafe; color: #1d4ed8; }
+  .order-status.delivered { background: #dcfce7; color: #166534; }
+  .order-status.cancelled { background: #fee2e2; color: #b91c1c; }
+  .order-date {
+    color: #64748b;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+  }
+  .order-items h3 {
+    margin: 1rem 0 0.75rem;
+    color: #1e293b;
+  }
+  .order-items ul {
+    list-style: none;
+    padding: 0;
+  }
+  .order-items li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .order-items li:last-child {
+    border-bottom: none;
+  }
+  .order-total {
+    text-align: right;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 1rem 0;
+    color: #8b5cf6;
+  }
+  .order-actions {
+    text-align: right;
+    margin-top: 1rem;
+  }
+  .btn-danger {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .btn-danger:hover {
+    background: #dc2626;
+  }
+  .no-orders {
+    text-align: center;
+    padding: 3rem;
+    background: #f9fafb;
+    border-radius: 16px;
+    border: 2px dashed #e9d5ff;
+  }
+  .no-orders p {
+    font-size: 1.2rem;
+    color: #64748b;
+    margin-bottom: 1.5rem;
+  }
+  .btn {
+    display: inline-block;
+    background: #8b5cf6;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 500;
+  }
+</style>
